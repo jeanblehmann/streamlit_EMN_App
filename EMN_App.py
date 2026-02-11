@@ -6,7 +6,7 @@ import yfinance as yf
 # Page config
 st.set_page_config(page_title="EMN AI Portfolio Builder", layout="wide")
 
-st.title("🚀 Equity Market Neutral (EMN) AI Portfolio Builder")
+st.title("Equity Market Neutral (EMN) AI Portfolio Builder")
 
 # 1. DATA SOURCE: Live Beta & Momentum via yfinance
 @st.cache_data(ttl=3600)  # Cache data for 1 hour to stay fast
@@ -45,7 +45,7 @@ universe = ['AAPL', 'TSLA', 'XOM', 'JPM', 'MSFT', 'META', 'NVDA', 'AMZN', 'GOOGL
 df_stocks = get_market_data(universe)
 
 # 3. STOCK UNIVERSE TABLE (Sortable with Heatmaps)
-st.subheader("📊 Stock Universe & AI Insights")
+st.subheader("Stock Universe & AI Insights")
 st.write("Analyze the factors below to identify your Long/Short pairs.")
 
 # Create heatmap styling
@@ -82,7 +82,7 @@ is_neutral = -0.05 <= total_beta <= 0.05
 status_color = "green" if is_neutral else "red"
 status_msg = "✅ NEUTRAL" if is_neutral else "⚠️ MARKET EXPOSED"
 
-st.subheader("⚖️ Portfolio Risk Balance")
+st.subheader("Portfolio Risk Balance")
 c1, c2 = st.columns(2)
 with c1:
     # Use Markdown for custom color logic as standard st.metric color is limited
