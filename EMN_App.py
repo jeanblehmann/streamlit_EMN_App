@@ -215,7 +215,7 @@ def _render_weights(tickers: list[str], side: str) -> None:
                 key=f"sl_{side}_{t}",
                 on_change=_rebalance,
                 args=(t, tickers, side),
-                format="%.0%%",
+                format="%.2f",
             )
 
     # Visual weight bars
