@@ -65,6 +65,7 @@ styled_df = (
 )
 st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
+
 # --- EDUCATION HUB ---
 with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
     col_a, col_b = st.columns(2)
@@ -101,157 +102,73 @@ available_tickers = df_stocks["Ticker"].tolist()
 
 col_sel1, col_sel2 = st.columns(2)
 with col_sel1:
-    longs = st.multiselect(
-        "🟢 Select Long Positions", options=available_tickers, key="ls"
-    )
+    longs = st.multiselect("🟢 Select Long Positions", options=available_tickers, key="ls")
 with col_sel2:
     short_options = [t for t in available_tickers if t not in longs]
-    shorts = st.multiselect(
-        "🔴 Select Short Positions", options=short_options, key="ss"
-    )
+    shorts = st.multiselect("🔴 Select Short Positions", options=short_options, key="ss")
 
 
-# --- 4. WEIGHT MANAGEMENT ---
-#
-# How it works:
-#   - Weights live in st.session_state["w_long"] / ["w_short"] as {ticker: float}
-#   - When tickers change (add/remove), we re-initialise to equal weight
-#   - When a slider moves, on_change fires _rebalance() which:
-#       1. Reads the new value from the widget key
-#       2. Proportionally scales all OTHER weights so total == 1.0
-#       3. Writes back to the state dict
-#   - Streamlit reruns and every slider reads its fresh value from the dict
-#
+# --- 4. WEIGHT SLIDERS ---
+# Simple pattern: render sliders → read raw values → normalise → display normalised weights.
+# No on_change callbacks, no session_state juggling. Just works.
 
-def _ensure_weights(tickers: list[str], side: str) -> None:
-    """Initialise or sync weight dict to match current ticker selection."""
-    key = f"w_{side}"
-    existing: dict = st.session_state.get(key, {})
-
-    if set(existing.keys()) != set(tickers):
-        if tickers:
-            st.session_state[key] = {t: round(1.0 / len(tickers), 4) for t in tickers}
-        else:
-            st.session_state[key] = {}
+st.subheader("⚖️ Weight Allocation")
 
 
-_ensure_weights(longs, "long")
-_ensure_weights(shorts, "short")
-
-
-def _rebalance(changed_ticker: str, tickers: list[str], side: str) -> None:
-    """When one slider moves, proportionally adjust the others so sum == 1."""
-    sk = f"w_{side}"
-    weights = st.session_state[sk]
-
-    # Read the new value the user just dragged to
-    new_val = st.session_state[f"sl_{side}_{changed_ticker}"]
-    new_val = max(0.0, min(1.0, new_val))
-    weights[changed_ticker] = new_val
-
-    others = [t for t in tickers if t != changed_ticker]
-    if not others:
-        # Only one ticker — it must be 100%
-        weights[changed_ticker] = 1.0
-        return
-
-    remaining = max(1.0 - new_val, 0.0)
-    old_other_sum = sum(weights[t] for t in others)
-
-    # Proportional redistribution (or equal split if all others were zero)
-    if old_other_sum > 1e-9:
-        scale = remaining / old_other_sum
-        for t in others:
-            weights[t] = weights[t] * scale
-    else:
-        for t in others:
-            weights[t] = remaining / len(others)
-
-    # Final normalisation to kill any float drift
-    total = sum(weights.values())
-    if total > 0:
-        for t in tickers:
-            weights[t] = weights[t] / total
-
-    st.session_state[sk] = weights
-
-
-# Reset button
-if st.button("🔄 Reset to Equal Weights"):
-    for side, tickers in [("long", longs), ("short", shorts)]:
-        if tickers:
-            st.session_state[f"w_{side}"] = {
-                t: round(1.0 / len(tickers), 4) for t in tickers
-            }
-        else:
-            st.session_state[f"w_{side}"] = {}
-    st.rerun()
-
-
-st.subheader("⚖️ Reactive Weight Balancing")
-
-
-def _render_weights(tickers: list[str], side: str) -> None:
-    """Render sliders for one side. Each slider triggers rebalance on change."""
+def collect_weights(tickers: list[str], side: str) -> dict[str, float]:
+    """Render sliders for each ticker and return normalised weights summing to 1.0."""
     if not tickers:
         st.info(f"Select {side} stocks above to begin.")
-        return
+        return {}
 
-    weights = st.session_state[f"w_{side}"]
-    total = sum(weights.values())
+    # Default: equal weight
+    default = round(1.0 / len(tickers), 2)
 
-    # Live sum confirmation
-    st.caption(f"Sum of weights: **{total:.4f}**")
-
+    # Collect raw slider values
+    raw = {}
     cols = st.columns(len(tickers))
     for i, t in enumerate(tickers):
         with cols[i]:
-            st.slider(
-                label=t,
-                min_value=0.0,
-                max_value=1.0,
-                value=float(weights[t]),
-                step=0.01,
-                key=f"sl_{side}_{t}",
-                on_change=_rebalance,
-                args=(t, tickers, side),
-                format="%.2f",
-            )
+            raw[t] = st.slider(f"{t}", 0.0, 1.0, default, 0.01, key=f"sl_{side}_{t}")
 
-    # Visual weight bars
+    # Normalise so they always sum to 1.0
+    total_raw = sum(raw.values())
+    if total_raw > 0:
+        normed = {t: v / total_raw for t, v in raw.items()}
+    else:
+        normed = {t: 1.0 / len(tickers) for t in tickers}
+
+    # Show normalised weights as a bar + percentage
     bar_cols = st.columns(len(tickers))
     for i, t in enumerate(tickers):
         with bar_cols[i]:
-            pct = weights[t] * 100
-            st.progress(min(weights[t], 1.0), text=f"{t}: {pct:.1f}%")
+            pct = normed[t] * 100
+            st.progress(min(normed[t], 1.0), text=f"{t}: {pct:.1f}%")
+
+    st.caption(f"Raw sum: {total_raw:.2f} → Normalised to 100%")
+    return normed
 
 
 col_l, col_r = st.columns(2)
 with col_l:
-    st.markdown("**🟢 Long Weights** (auto-balanced to 100%)")
-    _render_weights(longs, "long")
+    st.markdown("**🟢 Long Weights**")
+    long_weights = collect_weights(longs, "long")
 with col_r:
-    st.markdown("**🔴 Short Weights** (auto-balanced to 100%)")
-    _render_weights(shorts, "short")
+    st.markdown("**🔴 Short Weights**")
+    short_weights = collect_weights(shorts, "short")
 
 
 # --- 5. PORTFOLIO METRICS ---
 
-def _calc_beta(weights_dict: dict[str, float], data: pd.DataFrame) -> float:
-    if not weights_dict:
+def calc_beta(weights: dict[str, float], data: pd.DataFrame) -> float:
+    if not weights:
         return 0.0
     beta_lookup = data.set_index("Ticker")["Beta"]
-    total = 0.0
-    for t, w in weights_dict.items():
-        if t in beta_lookup.index:
-            total += w * beta_lookup[t]
-        else:
-            logger.warning("Ticker %s missing from data — excluded from beta", t)
-    return total
+    return sum(w * beta_lookup.get(t, 1.0) for t, w in weights.items())
 
 
-l_beta = _calc_beta(st.session_state.get("w_long", {}), df_stocks)
-s_beta = _calc_beta(st.session_state.get("w_short", {}), df_stocks)
+l_beta = calc_beta(long_weights, df_stocks)
+s_beta = calc_beta(short_weights, df_stocks)
 net_beta = l_beta - s_beta
 
 st.divider()
