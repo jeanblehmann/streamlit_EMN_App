@@ -8,20 +8,7 @@ st.set_page_config(page_title="EMN AI Portfolio Builder", layout="wide")
 
 st.title("🚀 Equity Market Neutral (EMN) AI Portfolio Builder")
 
-# --- 1. EDUCATION HUB ---
-with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown("### 📈 Factor Definitions")
-        st.write("**Momentum (6-Mo):** Price trend over the last 180 days. High momentum identifies 'winners' likely to continue outperforming[cite: 142, 201].")
-        st.write("**AI Sentiment:** NLP analysis of earnings calls and news. Scores range from -1 (Bearish) to +1 (Bullish)[cite: 171, 173].")
-    with col_b:
-        st.markdown("### 🤖 AI Model Logic")
-        st.write("**XGB Conviction:** Supervised learning probability (0-100%) that the stock will beat its peers[cite: 140, 155].")
-        st.write("**Cluster Group:** Unsupervised clustering of stocks with similar behavior; diversify by picking from different groups[cite: 176, 179].")
-    st.info("💡 **Strategy Tip:** Long stocks with high Sentiment/Conviction and Short those with low scores, then adjust weights to reach a Net Beta of 0.00[cite: 46, 61].")
-
-# --- 2. DATA FETCHING ---
+# --- 1. DATA FETCHING (Same as before) ---
 @st.cache_data(ttl=3600)
 def get_market_data(tickers):
     data_list = []
@@ -31,8 +18,6 @@ def get_market_data(tickers):
             beta = stock.info.get('beta', 1.0)
             hist = stock.history(period="6mo")
             momentum = ((hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1) * 100
-            
-            # Synthetic AI Signals with fixed seed for consistency [cite: 137]
             np.random.seed(sum(ord(c) for c in t)) 
             data_list.append({
                 "Ticker": t, "Beta": round(beta, 2), 
@@ -47,7 +32,7 @@ def get_market_data(tickers):
 universe = ['AAPL', 'TSLA', 'XOM', 'JPM', 'MSFT', 'META', 'NVDA', 'AMZN', 'GOOGL', 'BRK-B']
 df_stocks = get_market_data(universe)
 
-# --- 3. UNIVERSE DASHBOARD ---
+# --- 2. UNIVERSE DASHBOARD ---
 st.subheader("📊 Stock Universe & AI Insights")
 styled_df = df_stocks.style.background_gradient(subset=['AI_Sentiment'], cmap='RdYlGn') \
     .background_gradient(subset=['XGB_Conviction'], cmap='Greens') \
@@ -56,106 +41,99 @@ st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
 st.divider()
 
-# --- 4. SELECTION ---
+# --- 3. SELECTION ---
 col_sel1, col_sel2 = st.columns(2)
 with col_sel1:
-    longs = st.multiselect("🟢 Select Long Positions", options=df_stocks['Ticker'], key="long_select")
+    longs = st.multiselect("🟢 Select Long Positions", options=df_stocks['Ticker'], key="ls")
 with col_sel2:
-    shorts = st.multiselect("🔴 Select Short Positions", options=df_stocks['Ticker'], key="short_select")
+    shorts = st.multiselect("🔴 Select Short Positions", options=df_stocks['Ticker'], key="ss")
 
-# --- 5. REACTIVE WEIGHTING ENGINE ---
+# --- 4. REACTIVE WEIGHTING ENGINE (THE FIX) ---
 
-# Reset Button Logic [cite: 8]
-if st.button("🔄 Reset All Weights to Equal"):
-    if "w_long" in st.session_state: del st.session_state["w_long"]
-    if "w_short" in st.session_state: del st.session_state["w_short"]
-    st.rerun()
+def init_weights(tickers, side):
+    """Ensures weights exist in state and sum to 1.0."""
+    key = f"w_{side}"
+    if key not in st.session_state or set(st.session_state[key].keys()) != set(tickers):
+        if tickers:
+            st.session_state[key] = {t: 1.0/len(tickers) for t in tickers}
+        else:
+            st.session_state[key] = {}
 
-def init_side_state(tickers, side_key):
-    """Initializes or updates session state weights based on selection[cite: 31, 54]."""
-    state_key = f"w_{side_key}"
-    if not tickers:
-        st.session_state[state_key] = {}
-        return
-    # Re-initialize if the tickers selected changed [cite: 55]
-    if state_key not in st.session_state or set(st.session_state[state_key].keys()) != set(tickers):
-        st.session_state[state_key] = {t: 1.0/len(tickers) for t in tickers}
+init_weights(longs, "long")
+init_weights(shorts, "short")
 
-init_side_state(longs, "long")
-init_side_state(shorts, "short")
-
-def on_weight_change(changed_ticker, tickers, side_key):
-    """Callback to proportionally adjust other sliders when one moves[cite: 51, 62]."""
-    state_key = f"w_{side_key}"
-    new_val = st.session_state[f"slider_{side_key}_{changed_ticker}"]
+def update_weights(changed_ticker, tickers, side):
+    """Force-balances other sliders when one is moved."""
+    state_key = f"w_{side}"
+    # Get the value the user just set on the slider
+    new_val = st.session_state[f"s_{side}_{changed_ticker}"]
     st.session_state[state_key][changed_ticker] = new_val
     
-    other_tickers = [t for t in tickers if t != changed_ticker]
-    if not other_tickers:
+    others = [t for t in tickers if t != changed_ticker]
+    if not others:
         st.session_state[state_key][changed_ticker] = 1.0
         return
 
-    remaining_val = 1.0 - new_val
-    current_other_sum = sum(st.session_state[state_key][t] for t in other_tickers)
+    # Calculate remaining pool
+    remaining = 1.0 - new_val
+    current_other_sum = sum(st.session_state[state_key][t] for t in others)
     
     if current_other_sum > 0:
-        # Distribute remaining value proportionally [cite: 59, 62]
-        for t in other_tickers:
-            st.session_state[state_key][t] = (st.session_state[state_key][t] / current_other_sum) * remaining_val
+        for t in others:
+            st.session_state[state_key][t] = (st.session_state[state_key][t] / current_other_sum) * remaining
     else:
-        # If others were at zero, split remaining evenly
-        for t in other_tickers:
-            st.session_state[state_key][t] = remaining_val / len(other_tickers)
+        for t in others:
+            st.session_state[state_key][t] = remaining / len(others)
 
-def render_sliders(tickers, side_key):
-    """Displays sliders using session state values[cite: 6, 44]."""
+# Reset Button
+if st.button("🔄 Reset Weights"):
+    for k in ["w_long", "w_short"]: 
+        if k in st.session_state: del st.session_state[k]
+    st.rerun()
+
+st.subheader("⚖️ Reactive Weight Balancing")
+
+def render_side(tickers, side):
     if not tickers:
-        st.info(f"Please select {side_key} positions above.")
-        return {}
+        st.info(f"Select {side} stocks to adjust weights.")
+        return
     cols = st.columns(len(tickers))
     for i, t in enumerate(tickers):
         with cols[i]:
-            val = st.session_state[f"w_{side_key}"][t]
+            # The 'value' comes from session_state, but the slider updates via 'on_change'
             st.slider(
-                f"{t}", 0.0, 1.0, 
-                value=float(val),
-                key=f"slider_{side_key}_{t}",
-                on_change=on_weight_change,
-                args=(t, tickers, side_key),
+                t, 0.0, 1.0, 
+                value=float(st.session_state[f"w_{side}"][t]),
+                key=f"s_{side}_{t}",
+                on_change=update_weights,
+                args=(t, tickers, side),
                 format="%.2f"
             )
-    return st.session_state[f"w_{side_key}"]
 
-st.subheader("⚖️ Reactive Weight Balancing")
-st.caption("Adjusting one slider automatically scales others to maintain 100% side exposure.")
-
-col_l, col_s = st.columns(2)
+col_l, col_r = st.columns(2)
 with col_l:
-    st.write("🟢 Long Weights")
-    final_long_weights = render_sliders(longs, "long")
-with col_s:
-    st.write("🔴 Short Weights")
-    final_short_weights = render_sliders(shorts, "short")
+    st.write("🟢 Long Weights (Auto-balanced to 1.0)")
+    render_side(longs, "long")
+with col_r:
+    st.write("🔴 Short Weights (Auto-balanced to 1.0)")
+    render_side(shorts, "short")
 
-# --- 6. BETA CALCULATIONS & RESULTS ---
-
-def calculate_beta(weights_dict, data):
-    """Calculates weighted average beta[cite: 33, 53]."""
+# --- 5. CALCULATIONS & RESULTS ---
+def calc_beta(weights_dict, data):
     if not weights_dict: return 0.0
     return sum(w * data.set_index("Ticker").loc[t, "Beta"] for t, w in weights_dict.items())
 
-long_beta = calculate_beta(final_long_weights, df_stocks)
-short_beta = calculate_beta(final_short_weights, df_stocks)
-net_beta = long_beta - short_beta # Net exposure [cite: 57, 62]
+l_beta = calc_beta(st.session_state.get("w_long", {}), df_stocks)
+s_beta = calc_beta(st.session_state.get("w_short", {}), df_stocks)
+net_beta = l_beta - s_beta
 
 st.divider()
 c1, c2, c3 = st.columns(3)
-c1.metric("Long Side Beta", round(long_beta, 2))
-c2.metric("Short Side Beta", round(short_beta, 2))
-c3.metric("NET PORTFOLIO BETA", round(net_beta, 3), delta="Target: 0.00")
+c1.metric("Long Side Beta", round(l_beta, 2))
+c2.metric("Short Side Beta", round(s_beta, 2))
+c3.metric("NET PORTFOLIO BETA", round(net_beta, 3))
 
-# Neutrality Status [cite: 46, 62]
 if -0.05 <= net_beta <= 0.05:
-    st.success("✅ **Beta Neutral!** Your portfolio is statistically independent of market moves[cite: 45, 48].")
+    st.success("✅ **Beta Neutral!**")
 else:
-    st.error(f"⚠️ **Market Exposed:** Current Beta is {round(net_beta, 3)}. Adjust weights to cancel market risk[cite: 58].")
+    st.error("⚠️ **Market Exposed**")
