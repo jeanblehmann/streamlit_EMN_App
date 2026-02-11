@@ -116,25 +116,32 @@ with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
             "behavior; diversify by picking from different groups."
         )
     st.divider()
-    st.markdown("### 💰 Dollar Neutral vs Beta Neutral")
+    st.markdown("### 💰 Exposure & Neutrality")
     col_c, col_d = st.columns(2)
     with col_c:
         st.write(
-            "**Dollar Neutral:** Equal dollar amounts on each side. "
-            "$1 long for every $1 short. Gross exposure = 200%, net dollar exposure = 0%. "
-            "This app enforces dollar neutrality by normalising each side to 100%."
+            "**Dollar Neutral (100/100):** Equal dollar amounts on each side — "
+            "$1 long for every $1 short. Net dollar exposure = 0%."
+        )
+        st.write(
+            "**Directional tilt (e.g. 130/30):** More capital on the long side "
+            "means a net-long bias. Useful when you have higher conviction on longs "
+            "but still want to hedge with shorts."
         )
     with col_d:
         st.write(
             "**Beta Neutral:** Weighted beta of longs equals weighted beta of shorts, "
             "so the portfolio has zero sensitivity to market direction. "
-            "You can be dollar neutral but still market-exposed if betas differ — "
-            "beta neutrality is the stronger hedge."
+            "You can be dollar neutral but still market-exposed if betas differ."
+        )
+        st.write(
+            "**Gross Exposure:** Total capital deployed (long% + short%). "
+            "Higher gross = more leverage and risk."
         )
     st.info(
-        "💡 **Strategy Tip:** Long stocks with high Sentiment/Conviction and "
-        "Short those with low scores, then adjust weights to reach a Net Beta of 0.00. "
-        "A truly market-neutral portfolio is both dollar neutral AND beta neutral."
+        "💡 **Strategy Tip:** Start at 100/100 for a classic market-neutral setup. "
+        "Use the exposure slider to tilt directionally if you have a market view. "
+        "Then adjust individual weights and aim for Net Beta ≈ 0.00."
     )
 
 st.divider()
@@ -154,13 +161,55 @@ with col_sel2:
 
 
 # ============================================================
-# 4. WEIGHT SLIDERS
+# 4. EXPOSURE CONTROLS
+# ============================================================
+st.subheader("💰 Exposure Configuration")
+
+exp_col1, exp_col2, exp_col3 = st.columns(3)
+with exp_col1:
+    total_capital = st.number_input(
+        "Total Capital ($)", min_value=10_000, max_value=100_000_000,
+        value=1_000_000, step=100_000, format="%d", key="capital",
+    )
+with exp_col2:
+    long_pct = st.slider(
+        "Long Exposure (%)", min_value=0, max_value=200, value=100, step=5, key="long_pct",
+    )
+with exp_col3:
+    short_pct = st.slider(
+        "Short Exposure (%)", min_value=0, max_value=200, value=100, step=5, key="short_pct",
+    )
+
+long_notional = total_capital * long_pct / 100
+short_notional = total_capital * short_pct / 100
+gross_exposure = long_pct + short_pct
+net_exposure = long_pct - short_pct
+
+# Exposure summary
+mc1, mc2, mc3, mc4 = st.columns(4)
+mc1.metric("Long Notional", f"${long_notional:,.0f}")
+mc2.metric("Short Notional", f"${short_notional:,.0f}")
+mc3.metric("Gross Exposure", f"{gross_exposure}%")
+mc4.metric("Net Dollar Exposure", f"{net_exposure:+d}%")
+
+if net_exposure == 0:
+    st.success("✅ **Dollar Neutral** — equal notional on both sides")
+elif abs(net_exposure) <= 20:
+    st.warning(f"⚡ **Slight directional tilt** — net {net_exposure:+d}% exposure")
+else:
+    st.error(f"🎯 **Directional portfolio** — net {net_exposure:+d}% exposure")
+
+st.divider()
+
+
+# ============================================================
+# 5. WEIGHT SLIDERS
 # ============================================================
 st.subheader("⚖️ Weight Allocation")
 
 
-def collect_weights(tickers: list[str], side: str) -> dict[str, float]:
-    """Render sliders, return normalised weights summing to 1.0."""
+def collect_weights(tickers: list[str], side: str, notional: float) -> dict[str, float]:
+    """Render sliders, return normalised weights summing to 1.0. Show dollar amounts."""
     if not tickers:
         st.info(f"Select {side} stocks above to begin.")
         return {}
@@ -179,68 +228,92 @@ def collect_weights(tickers: list[str], side: str) -> dict[str, float]:
     else:
         normed = {t: 1.0 / len(tickers) for t in tickers}
 
+    # Show normalised weights + dollar allocation
     bar_cols = st.columns(len(tickers))
     for i, t in enumerate(tickers):
         with bar_cols[i]:
             pct = normed[t] * 100
+            dollar = normed[t] * notional
             st.progress(min(normed[t], 1.0), text=f"{t}: {pct:.1f}%")
+            st.caption(f"${dollar:,.0f}")
 
-    st.caption(f"Raw sum: {total_raw:.2f} → Normalised to 100%")
     return normed
 
 
 col_l, col_r = st.columns(2)
 with col_l:
-    st.markdown("**🟢 Long Weights**")
-    long_weights = collect_weights(longs, "long")
+    st.markdown(f"**🟢 Long Weights** (${long_notional:,.0f} total)")
+    long_weights = collect_weights(longs, "long", long_notional)
 with col_r:
-    st.markdown("**🔴 Short Weights**")
-    short_weights = collect_weights(shorts, "short")
+    st.markdown(f"**🔴 Short Weights** (${short_notional:,.0f} total)")
+    short_weights = collect_weights(shorts, "short", short_notional)
 
 
 # ============================================================
-# 5. PORTFOLIO METRICS — Beta + Dollar Neutral checks
+# 6. PORTFOLIO METRICS
 # ============================================================
 
-def calc_beta(weights: dict[str, float], data: pd.DataFrame) -> float:
+def calc_beta(weights: dict[str, float], exposure_pct: float, data: pd.DataFrame) -> float:
+    """Calculate weighted beta scaled by exposure percentage."""
     if not weights:
         return 0.0
     beta_lookup = data.set_index("Ticker")["Beta"]
-    return sum(w * beta_lookup.get(t, 1.0) for t, w in weights.items())
+    raw_beta = sum(w * beta_lookup.get(t, 1.0) for t, w in weights.items())
+    return raw_beta * (exposure_pct / 100)
 
 
-l_beta = calc_beta(long_weights, df_stocks)
-s_beta = calc_beta(short_weights, df_stocks)
+l_beta = calc_beta(long_weights, long_pct, df_stocks)
+s_beta = calc_beta(short_weights, short_pct, df_stocks)
 net_beta = l_beta - s_beta
 
-long_dollar_pct = sum(long_weights.values()) * 100 if long_weights else 0
-short_dollar_pct = sum(short_weights.values()) * 100 if short_weights else 0
-
 st.divider()
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Long Side Beta", round(l_beta, 2))
-c2.metric("Short Side Beta", round(s_beta, 2))
+c1, c2, c3 = st.columns(3)
+c1.metric("Long Side Beta", round(l_beta, 3))
+c2.metric("Short Side Beta", round(s_beta, 3))
 c3.metric("NET PORTFOLIO BETA", round(net_beta, 3))
-c4.metric("Gross Exposure", f"{long_dollar_pct + short_dollar_pct:.0f}%")
 
-# Status checks
-col_status1, col_status2 = st.columns(2)
-with col_status1:
-    if -0.05 <= net_beta <= 0.05:
-        st.success("✅ **Beta Neutral** — portfolio hedged against market moves")
-    else:
-        st.error("⚠️ **Not Beta Neutral** — portfolio exposed to market direction")
-with col_status2:
-    if long_weights and short_weights:
-        st.success("✅ **Dollar Neutral** — equal notional on both sides (100% / 100%)")
-    elif long_weights or short_weights:
-        st.warning("⚠️ **One-sided** — select positions on both sides for dollar neutrality")
-    else:
-        st.info("Select long and short positions to begin.")
+if -0.05 <= net_beta <= 0.05:
+    st.success("✅ **Beta Neutral** — portfolio hedged against market moves")
+else:
+    st.error("⚠️ **Not Beta Neutral** — portfolio exposed to market direction")
 
 
 # ============================================================
-# 6. LIVE CHARTS (only shown when positions are selected)
+# 7. PORTFOLIO SUMMARY TABLE
+# ============================================================
+if long_weights or short_weights:
+    st.divider()
+    st.subheader("📋 Portfolio Summary")
+
+    beta_lookup = df_stocks.set_index("Ticker")["Beta"]
+    summary_rows = []
+
+    for t, w in long_weights.items():
+        b = beta_lookup.get(t, 1.0)
+        dollar = w * long_notional
+        beta_contrib = w * b * (long_pct / 100)
+        summary_rows.append({
+            "Ticker": t, "Side": "🟢 Long", "Weight": f"{w * 100:.1f}%",
+            "Notional": f"${dollar:,.0f}", "Beta": b,
+            "Beta Contribution": round(beta_contrib, 4),
+        })
+    for t, w in short_weights.items():
+        b = beta_lookup.get(t, 1.0)
+        dollar = w * short_notional
+        beta_contrib = -w * b * (short_pct / 100)
+        summary_rows.append({
+            "Ticker": t, "Side": "🔴 Short", "Weight": f"{w * 100:.1f}%",
+            "Notional": f"${dollar:,.0f}", "Beta": b,
+            "Beta Contribution": round(beta_contrib, 4),
+        })
+
+    if summary_rows:
+        summary_df = pd.DataFrame(summary_rows)
+        st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+
+# ============================================================
+# 8. LIVE CHARTS
 # ============================================================
 all_selected = longs + shorts
 if all_selected:
@@ -267,8 +340,7 @@ if all_selected:
                 corr,
                 text_auto=".2f",
                 color_continuous_scale="RdBu_r",
-                zmin=-1,
-                zmax=1,
+                zmin=-1, zmax=1,
                 aspect="auto",
             )
             fig_corr.update_layout(height=400, margin=dict(l=20, r=20, t=30, b=20))
@@ -280,56 +352,41 @@ if all_selected:
         if long_weights and short_weights:
             st.markdown("#### 📊 Cumulative Return Backtest (6-Month)")
             st.caption(
-                "Simulates how your portfolio would have performed with the current weights. "
-                "The net (green) line shows the market-neutral return."
+                "Simulates how your portfolio would have performed with the current weights "
+                "and exposure levels. The blue line is your net strategy return."
             )
 
-            # Build weighted return series for each leg
+            # Build weighted return series scaled by exposure
             long_ret = pd.Series(0.0, index=daily_returns.index)
             for t, w in long_weights.items():
                 if t in daily_returns.columns:
-                    long_ret += w * daily_returns[t]
+                    long_ret += w * daily_returns[t] * (long_pct / 100)
 
             short_ret = pd.Series(0.0, index=daily_returns.index)
             for t, w in short_weights.items():
                 if t in daily_returns.columns:
-                    short_ret += w * daily_returns[t]
+                    short_ret += w * daily_returns[t] * (short_pct / 100)
 
-            # Net return: profit on longs + profit on shorts (short P&L is inverted)
+            # Net return: long profits minus short losses
             net_ret = long_ret - short_ret
 
-            # Cumulative
             cum_long = (1 + long_ret).cumprod() - 1
             cum_short = (1 + short_ret).cumprod() - 1
             cum_net = (1 + net_ret).cumprod() - 1
 
-            cum_df = pd.DataFrame(
-                {
-                    "Long Leg": cum_long * 100,
-                    "Short Leg": cum_short * 100,
-                    "Net (L − S)": cum_net * 100,
-                }
-            )
-
             fig_cum = go.Figure()
-            fig_cum.add_trace(
-                go.Scatter(
-                    x=cum_df.index, y=cum_df["Long Leg"],
-                    name="Long Leg", line=dict(color="#2ecc71", width=2),
-                )
-            )
-            fig_cum.add_trace(
-                go.Scatter(
-                    x=cum_df.index, y=cum_df["Short Leg"],
-                    name="Short Leg", line=dict(color="#e74c3c", width=2),
-                )
-            )
-            fig_cum.add_trace(
-                go.Scatter(
-                    x=cum_df.index, y=cum_df["Net (L − S)"],
-                    name="Net (L − S)", line=dict(color="#3498db", width=3),
-                )
-            )
+            fig_cum.add_trace(go.Scatter(
+                x=cum_long.index, y=cum_long * 100,
+                name="Long Leg", line=dict(color="#2ecc71", width=2),
+            ))
+            fig_cum.add_trace(go.Scatter(
+                x=cum_short.index, y=cum_short * 100,
+                name="Short Leg", line=dict(color="#e74c3c", width=2),
+            ))
+            fig_cum.add_trace(go.Scatter(
+                x=cum_net.index, y=cum_net * 100,
+                name="Net (L − S)", line=dict(color="#3498db", width=3),
+            ))
             fig_cum.add_hline(y=0, line_dash="dash", line_color="grey", opacity=0.5)
             fig_cum.update_layout(
                 yaxis_title="Cumulative Return (%)",
@@ -341,10 +398,13 @@ if all_selected:
             st.plotly_chart(fig_cum, use_container_width=True)
 
             # Quick stats
-            col_s1, col_s2, col_s3 = st.columns(3)
+            col_s1, col_s2, col_s3, col_s4 = st.columns(4)
             col_s1.metric("Long Leg Return", f"{cum_long.iloc[-1] * 100:+.2f}%")
             col_s2.metric("Short Leg Return", f"{cum_short.iloc[-1] * 100:+.2f}%")
             col_s3.metric("Net Strategy Return", f"{cum_net.iloc[-1] * 100:+.2f}%")
+            # Dollar P&L
+            net_pnl = cum_net.iloc[-1] * total_capital
+            col_s4.metric("Net P&L", f"${net_pnl:+,.0f}")
 
         # --------------------------------------------------
         # CHART 3: Beta Contribution Waterfall
@@ -352,7 +412,7 @@ if all_selected:
         if long_weights or short_weights:
             st.markdown("#### 📐 Beta Contribution by Position")
             st.caption(
-                "Each bar shows how much beta a position contributes. "
+                "Each bar shows how much beta a position contributes (scaled by exposure). "
                 "The goal is for the green (long) bars to offset the red (short) bars."
             )
 
@@ -361,57 +421,52 @@ if all_selected:
 
             for t, w in long_weights.items():
                 b = beta_lookup.get(t, 1.0)
-                waterfall_data.append(
-                    {"Ticker": f"{t} (L)", "Beta Contribution": round(w * b, 4), "Side": "Long"}
-                )
+                waterfall_data.append({
+                    "Ticker": f"{t} (L)",
+                    "Beta Contribution": round(w * b * (long_pct / 100), 4),
+                    "Side": "Long",
+                })
             for t, w in short_weights.items():
                 b = beta_lookup.get(t, 1.0)
-                waterfall_data.append(
-                    {"Ticker": f"{t} (S)", "Beta Contribution": round(-w * b, 4), "Side": "Short"}
-                )
+                waterfall_data.append({
+                    "Ticker": f"{t} (S)",
+                    "Beta Contribution": round(-w * b * (short_pct / 100), 4),
+                    "Side": "Short",
+                })
 
             if waterfall_data:
                 wf_df = pd.DataFrame(waterfall_data)
                 colors = ["#2ecc71" if s == "Long" else "#e74c3c" for s in wf_df["Side"]]
 
-                fig_wf = go.Figure(
-                    go.Bar(
-                        x=wf_df["Ticker"],
-                        y=wf_df["Beta Contribution"],
-                        marker_color=colors,
-                        text=[f"{v:+.3f}" for v in wf_df["Beta Contribution"]],
-                        textposition="outside",
-                    )
-                )
+                fig_wf = go.Figure(go.Bar(
+                    x=wf_df["Ticker"], y=wf_df["Beta Contribution"],
+                    marker_color=colors,
+                    text=[f"{v:+.3f}" for v in wf_df["Beta Contribution"]],
+                    textposition="outside",
+                ))
                 fig_wf.add_hline(y=0, line_color="grey", line_width=1)
-
-                # Net beta annotation
                 fig_wf.add_annotation(
                     x=1.0, y=1.0, xref="paper", yref="paper",
                     text=f"Net Beta: {net_beta:+.3f}",
                     showarrow=False,
                     font=dict(size=14, color="#3498db"),
-                    bgcolor="white",
-                    bordercolor="#3498db",
-                    borderwidth=1,
-                    borderpad=6,
+                    bgcolor="white", bordercolor="#3498db", borderwidth=1, borderpad=6,
                 )
                 fig_wf.update_layout(
                     yaxis_title="Beta Contribution",
-                    xaxis_title="",
-                    height=400,
+                    xaxis_title="", height=400,
                     margin=dict(l=20, r=20, t=30, b=20),
                     showlegend=False,
                 )
                 st.plotly_chart(fig_wf, use_container_width=True)
 
         # --------------------------------------------------
-        # CHART 4: Sector Exposure (bonus)
+        # CHART 4: Sector Exposure
         # --------------------------------------------------
         if long_weights or short_weights:
             st.markdown("#### 🏭 Sector Exposure")
             st.caption(
-                "Shows your net weight by sector. "
+                "Net dollar exposure by sector. "
                 "Even a beta-neutral portfolio can have concentrated sector risk."
             )
 
@@ -420,34 +475,32 @@ if all_selected:
 
             for t, w in long_weights.items():
                 sec = sector_lookup.get(t, "Unknown")
-                sector_exposure[sec] = sector_exposure.get(sec, 0) + w
+                sector_exposure[sec] = sector_exposure.get(sec, 0) + w * long_notional
 
             for t, w in short_weights.items():
                 sec = sector_lookup.get(t, "Unknown")
-                sector_exposure[sec] = sector_exposure.get(sec, 0) - w
+                sector_exposure[sec] = sector_exposure.get(sec, 0) - w * short_notional
 
             if sector_exposure:
                 sec_df = pd.DataFrame(
-                    [{"Sector": k, "Net Weight": v} for k, v in sector_exposure.items()]
-                ).sort_values("Net Weight")
+                    [{"Sector": k, "Net Exposure ($)": v} for k, v in sector_exposure.items()]
+                ).sort_values("Net Exposure ($)")
 
                 colors_sec = [
-                    "#2ecc71" if v >= 0 else "#e74c3c" for v in sec_df["Net Weight"]
+                    "#2ecc71" if v >= 0 else "#e74c3c" for v in sec_df["Net Exposure ($)"]
                 ]
 
-                fig_sec = go.Figure(
-                    go.Bar(
-                        x=sec_df["Net Weight"] * 100,
-                        y=sec_df["Sector"],
-                        orientation="h",
-                        marker_color=colors_sec,
-                        text=[f"{v * 100:+.1f}%" for v in sec_df["Net Weight"]],
-                        textposition="outside",
-                    )
-                )
+                fig_sec = go.Figure(go.Bar(
+                    x=sec_df["Net Exposure ($)"],
+                    y=sec_df["Sector"],
+                    orientation="h",
+                    marker_color=colors_sec,
+                    text=[f"${v:+,.0f}" for v in sec_df["Net Exposure ($)"]],
+                    textposition="outside",
+                ))
                 fig_sec.add_vline(x=0, line_color="grey", line_width=1)
                 fig_sec.update_layout(
-                    xaxis_title="Net Exposure (%)",
+                    xaxis_title="Net Exposure ($)",
                     yaxis_title="",
                     height=max(250, len(sector_exposure) * 50),
                     margin=dict(l=20, r=20, t=30, b=20),
