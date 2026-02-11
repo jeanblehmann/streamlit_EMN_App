@@ -272,10 +272,15 @@ c1.metric("Long Side Beta", round(l_beta, 3))
 c2.metric("Short Side Beta", round(s_beta, 3))
 c3.metric("NET PORTFOLIO BETA", round(net_beta, 3))
 
-if -0.05 <= net_beta <= 0.05:
-    st.success("✅ **Beta Neutral** — portfolio hedged against market moves")
+abs_beta = abs(net_beta)
+if abs_beta <= 0.05:
+    st.success(f"🟢 **Beta Neutral** (|β| = {abs_beta:.3f} ≤ 0.05) — fully hedged against market moves")
+elif abs_beta <= 0.10:
+    st.warning(f"🟡 **Near Neutral** (|β| = {abs_beta:.3f} ≤ 0.10) — minor directional exposure, acceptable for most EMN strategies")
+elif abs_beta <= 0.20:
+    st.warning(f"🟠 **Loosely Neutral** (|β| = {abs_beta:.3f} ≤ 0.20) — moderate market sensitivity, typical of low-beta long/short funds")
 else:
-    st.error("⚠️ **Not Beta Neutral** — portfolio exposed to market direction")
+    st.error(f"🔴 **Market Exposed** (|β| = {abs_beta:.3f} > 0.20) — significant directional risk, not market neutral")
 
 
 # ============================================================
