@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="EMN AI Portfolio Builder", layout="wide")
-st.title("Equity Market Neutral (EMN) Strategy Builder - Interactive Demo")
+st.title("🚀 Equity Market Neutral (EMN) AI Portfolio Builder")
 
 
 # ============================================================
@@ -18,20 +18,21 @@ st.title("Equity Market Neutral (EMN) Strategy Builder - Interactive Demo")
 # ============================================================
 @st.cache_data(ttl=3600)
 def get_market_data(tickers: list[str]) -> pd.DataFrame:
-    """Fetch stock metadata (beta, momentum, simulated AI signals)."""
+    """Fetch stock metadata. Falls back to synthetic data if API fails."""
     data_list = []
     for t in tickers:
         try:
             stock = yf.Ticker(t)
             info = stock.info
-            beta = info.get("beta") or 1.0
+            beta = info.get("beta", 1.0)
+            if beta is None:
+                beta = 1.0
             beta = float(beta)
             sector = info.get("sector", "Unknown")
 
             hist = stock.history(period="6mo")
-            if hist.empty or len(hist) < 2:
-                logger.warning("Insufficient history for %s — skipping", t)
-                continue
+            if hist.empty:
+                raise ValueError("No hist data")
             momentum = ((hist["Close"].iloc[-1] / hist["Close"].iloc[0]) - 1) * 100
 
             np.random.seed(sum(ord(c) for c in t))
@@ -46,25 +47,50 @@ def get_market_data(tickers: list[str]) -> pd.DataFrame:
                     "Cluster": f"Group {np.random.choice([1, 2, 3, 4])}",
                 }
             )
-        except Exception as exc:
-            logger.warning("Failed to fetch data for %s: %s", t, exc)
-            continue
+        except Exception as e:
+            # FALLBACK: synthetic data so the demo always works
+            logger.warning("API failed for %s (%s) — using synthetic data", t, e)
+            np.random.seed(len(t))
+            data_list.append(
+                {
+                    "Ticker": t,
+                    "Sector": np.random.choice(
+                        ["Technology", "Energy", "Financials", "Consumer", "Healthcare"]
+                    ),
+                    "Beta": round(np.random.uniform(0.5, 1.8), 2),
+                    "Momentum": round(np.random.uniform(-20, 20), 2),
+                    "AI_Sentiment": round(np.random.uniform(-1, 1), 2),
+                    "XGB_Conviction": round(np.random.uniform(0.5, 0.9), 2),
+                    "Cluster": f"Group {np.random.randint(1, 5)}",
+                }
+            )
     return pd.DataFrame(data_list)
 
 
 @st.cache_data(ttl=3600)
 def get_price_history(tickers: list[str], period: str = "6mo") -> pd.DataFrame:
-    """Fetch daily close prices for a list of tickers."""
+    """Fetch daily close prices. Falls back to synthetic random walk if API fails."""
     if not tickers:
         return pd.DataFrame()
     try:
         data = yf.download(tickers, period=period, progress=False)["Close"]
         if isinstance(data, pd.Series):
             data = data.to_frame(name=tickers[0])
+        if data.empty:
+            raise ValueError("Empty price data")
         return data.dropna()
     except Exception as exc:
-        logger.warning("Price download failed: %s", exc)
-        return pd.DataFrame()
+        # FALLBACK: generate synthetic price history so charts still work
+        logger.warning("Price download failed (%s) — generating synthetic data", exc)
+        np.random.seed(42)
+        dates = pd.bdate_range(end=pd.Timestamp.today(), periods=126)
+        prices = {}
+        for t in tickers:
+            np.random.seed(sum(ord(c) for c in t))
+            base = np.random.uniform(50, 500)
+            returns = np.random.normal(0.0005, 0.02, len(dates))
+            prices[t] = base * np.cumprod(1 + returns)
+        return pd.DataFrame(prices, index=dates)
 
 
 UNIVERSE = [
@@ -82,6 +108,16 @@ if df_stocks.empty:
     st.warning("No stock data could be loaded. Check your network / tickers.")
     st.stop()
 
+# Indicate data source to the audience
+_has_live = any(df_stocks["Sector"] != "Unknown") and not all(
+    df_stocks["Sector"].isin(["Technology", "Energy", "Financials", "Consumer", "Healthcare"])
+    & (df_stocks["Sector"].value_counts().max() <= 2)
+)
+if _has_live:
+    st.caption("🟢 Live data from Yahoo Finance")
+else:
+    st.caption("🟡 Using synthetic demo data (Yahoo Finance unavailable)")
+
 styled_df = (
     df_stocks.style.background_gradient(subset=["AI_Sentiment"], cmap="RdYlGn")
     .background_gradient(subset=["XGB_Conviction"], cmap="Greens")
@@ -96,7 +132,7 @@ st.dataframe(styled_df, use_container_width=True, hide_index=True)
 with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
     col_a, col_b = st.columns(2)
     with col_a:
-        st.markdown("### Factor Definitions")
+        st.markdown("### 📈 Factor Definitions")
         st.write(
             "**Momentum (6-Mo):** Price trend over the last 180 days. "
             "High momentum identifies 'winners' likely to continue outperforming."
@@ -106,7 +142,7 @@ with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
             "Scores range from -1 (Bearish) to +1 (Bullish)."
         )
     with col_b:
-        st.markdown("### AI Model Logic")
+        st.markdown("### 🤖 AI Model Logic")
         st.write(
             "**XGB Conviction:** Supervised learning probability (0-100%) "
             "that the stock will beat its peers."
@@ -116,7 +152,7 @@ with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
             "behavior; diversify by picking from different groups."
         )
     st.divider()
-    st.markdown("### Exposure & Neutrality")
+    st.markdown("### 💰 Exposure & Neutrality")
     col_c, col_d = st.columns(2)
     with col_c:
         st.write(
@@ -163,7 +199,7 @@ with col_sel2:
 # ============================================================
 # 4. EXPOSURE CONTROLS
 # ============================================================
-st.subheader("Exposure Configuration")
+st.subheader("💰 Exposure Configuration")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
