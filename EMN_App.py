@@ -61,7 +61,7 @@ def get_market_data(tickers: list[str]) -> pd.DataFrame:
         except Exception as e:
             # FALLBACK: synthetic data so the demo always works
             logger.warning("API failed for %s (%s) — using synthetic data", t, e)
-            np.random.seed(len(t))
+            np.random.seed(sum(ord(c) for c in t))
             data_list.append(
                 {
                     "Ticker": t,
