@@ -65,9 +65,7 @@ def get_market_data(tickers: list[str]) -> pd.DataFrame:
             data_list.append(
                 {
                     "Ticker": t,
-                    "Sector": np.random.choice(
-                        ["Technology", "Energy", "Financials", "Consumer", "Healthcare"]
-                    ),
+                    "Sector": SECTOR_MAP.get(t, "Unknown"),
                     "Beta": round(np.random.uniform(0.5, 1.8), 2),
                     "Momentum": round(np.random.uniform(-20, 20), 2),
                     "AI_Sentiment": round(np.random.uniform(-1, 1), 2),
@@ -98,9 +96,7 @@ def _generate_synthetic_universe(tickers: list[str]) -> pd.DataFrame:
         data_list.append(
             {
                 "Ticker": t,
-                "Sector": np.random.choice(
-                    ["Technology", "Energy", "Financials", "Consumer", "Healthcare"]
-                ),
+                "Sector": SECTOR_MAP.get(t, "Unknown"),
                 "Beta": round(np.random.uniform(0.5, 1.8), 2),
                 "Momentum": round(np.random.uniform(-20, 20), 2),
                 "AI_Sentiment": round(np.random.uniform(-1, 1), 2),
@@ -142,6 +138,20 @@ UNIVERSE = [
     "AAPL", "TSLA", "XOM", "JPM", "MSFT",
     "META", "NVDA", "AMZN", "GOOGL", "BRK-B",
 ]
+
+# Real sectors for fallback when yfinance is unavailable
+SECTOR_MAP = {
+    "AAPL": "Technology",
+    "TSLA": "Consumer Cyclical",
+    "XOM": "Energy",
+    "JPM": "Financial Services",
+    "MSFT": "Technology",
+    "META": "Communication Services",
+    "NVDA": "Technology",
+    "AMZN": "Consumer Cyclical",
+    "GOOGL": "Communication Services",
+    "BRK-B": "Financial Services",
+}
 df_stocks = get_market_data(UNIVERSE)
 
 
