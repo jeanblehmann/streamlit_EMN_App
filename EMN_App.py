@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="EMN AI Portfolio Builder", layout="wide")
-st.title("🚀 Equity Market Neutral (EMN) AI Portfolio Builder")
+st.title("Equity Market Neutral (EMN) Strategy Builder - Interactive Demo")
 
 
 # ============================================================
