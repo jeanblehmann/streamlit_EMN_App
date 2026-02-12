@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="EMN AI Portfolio Builder", layout="wide")
-st.title("🚀 Equity Market Neutral (EMN) AI Portfolio Builder")
+st.title(" Equity Market Neutral (EMN) AI Portfolio Builder")
 
 
 # ============================================================
@@ -20,6 +20,7 @@ st.title("🚀 Equity Market Neutral (EMN) AI Portfolio Builder")
 def get_market_data(tickers: list[str]) -> pd.DataFrame:
     """Fetch stock metadata. Falls back to synthetic data if API fails."""
     data_list = []
+    live_count = 0
     for t in tickers:
         try:
             stock = yf.Ticker(t)
@@ -30,10 +31,18 @@ def get_market_data(tickers: list[str]) -> pd.DataFrame:
             beta = float(beta)
             sector = info.get("sector", "Unknown")
 
-            hist = stock.history(period="6mo")
-            if hist.empty:
+            hist = stock.history(period="6mo", auto_adjust=True, repair=True)
+            if hist.empty or len(hist) < 2:
                 raise ValueError("No hist data")
-            momentum = ((hist["Close"].iloc[-1] / hist["Close"].iloc[0]) - 1) * 100
+
+            first_close = hist["Close"].iloc[0]
+            last_close = hist["Close"].iloc[-1]
+
+            # Validate that prices are actually different (not stale data)
+            if first_close == 0 or pd.isna(first_close) or pd.isna(last_close):
+                raise ValueError("Invalid price data")
+
+            momentum = ((last_close / first_close) - 1) * 100
 
             np.random.seed(sum(ord(c) for c in t))
             data_list.append(
@@ -45,8 +54,10 @@ def get_market_data(tickers: list[str]) -> pd.DataFrame:
                     "AI_Sentiment": round(np.random.uniform(-1, 1), 2),
                     "XGB_Conviction": round(np.random.uniform(0.3, 0.95), 2),
                     "Cluster": f"Group {np.random.choice([1, 2, 3, 4])}",
+                    "_source": "live",
                 }
             )
+            live_count += 1
         except Exception as e:
             # FALLBACK: synthetic data so the demo always works
             logger.warning("API failed for %s (%s) — using synthetic data", t, e)
@@ -62,8 +73,42 @@ def get_market_data(tickers: list[str]) -> pd.DataFrame:
                     "AI_Sentiment": round(np.random.uniform(-1, 1), 2),
                     "XGB_Conviction": round(np.random.uniform(0.5, 0.9), 2),
                     "Cluster": f"Group {np.random.randint(1, 5)}",
+                    "_source": "synthetic",
                 }
             )
+
+    df = pd.DataFrame(data_list)
+
+    # Extra validation: if all "live" momentum values are identical, data is stale
+    if live_count > 1:
+        live_mom = df.loc[df["_source"] == "live", "Momentum"]
+        if live_mom.nunique() <= 1:
+            logger.warning("All live momentum values identical — data likely stale, falling back")
+            # Regenerate everything as synthetic
+            df = _generate_synthetic_universe(tickers)
+
+    return df
+
+
+def _generate_synthetic_universe(tickers: list[str]) -> pd.DataFrame:
+    """Full synthetic fallback when live data is unreliable."""
+    data_list = []
+    for t in tickers:
+        np.random.seed(sum(ord(c) for c in t))
+        data_list.append(
+            {
+                "Ticker": t,
+                "Sector": np.random.choice(
+                    ["Technology", "Energy", "Financials", "Consumer", "Healthcare"]
+                ),
+                "Beta": round(np.random.uniform(0.5, 1.8), 2),
+                "Momentum": round(np.random.uniform(-20, 20), 2),
+                "AI_Sentiment": round(np.random.uniform(-1, 1), 2),
+                "XGB_Conviction": round(np.random.uniform(0.5, 0.9), 2),
+                "Cluster": f"Group {np.random.randint(1, 5)}",
+                "_source": "synthetic",
+            }
+        )
     return pd.DataFrame(data_list)
 
 
@@ -109,17 +154,19 @@ if df_stocks.empty:
     st.stop()
 
 # Indicate data source to the audience
-_has_live = any(df_stocks["Sector"] != "Unknown") and not all(
-    df_stocks["Sector"].isin(["Technology", "Energy", "Financials", "Consumer", "Healthcare"])
-    & (df_stocks["Sector"].value_counts().max() <= 2)
-)
-if _has_live:
+_live_pct = (df_stocks["_source"] == "live").mean() * 100 if "_source" in df_stocks.columns else 0
+if _live_pct == 100:
     st.caption("🟢 Live data from Yahoo Finance")
+elif _live_pct > 0:
+    st.caption(f"🟡 Mixed data — {_live_pct:.0f}% live, rest synthetic fallback")
 else:
-    st.caption("🟡 Using synthetic demo data (Yahoo Finance unavailable)")
+    st.caption("🟠 Using synthetic demo data (Yahoo Finance unavailable)")
+
+# Drop the internal _source column before display
+display_df = df_stocks.drop(columns=["_source"], errors="ignore")
 
 styled_df = (
-    df_stocks.style.background_gradient(subset=["AI_Sentiment"], cmap="RdYlGn")
+    display_df.style.background_gradient(subset=["AI_Sentiment"], cmap="RdYlGn")
     .background_gradient(subset=["XGB_Conviction"], cmap="Greens")
     .format({"Momentum": "{:.2f}%", "XGB_Conviction": "{:.0%}"})
 )
@@ -152,7 +199,7 @@ with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
             "behavior; diversify by picking from different groups."
         )
     st.divider()
-    st.markdown("### 💰 Exposure & Neutrality")
+    st.markdown("###  Exposure & Neutrality")
     col_c, col_d = st.columns(2)
     with col_c:
         st.write(
@@ -199,7 +246,7 @@ with col_sel2:
 # ============================================================
 # 4. EXPOSURE CONTROLS
 # ============================================================
-st.subheader("💰 Exposure Configuration")
+st.subheader(" Exposure Configuration")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
@@ -229,11 +276,11 @@ mc3.metric("Gross Exposure", f"{gross_exposure}%")
 mc4.metric("Net Dollar Exposure", f"{net_exposure:+d}%")
 
 if net_exposure == 0:
-    st.success("✅ **Dollar Neutral** — equal notional on both sides")
+    st.success(" **Dollar Neutral** — equal notional on both sides")
 elif abs(net_exposure) <= 20:
-    st.warning(f"⚡ **Slight directional tilt** — net {net_exposure:+d}% exposure")
+    st.warning(f" **Slight directional tilt** — net {net_exposure:+d}% exposure")
 else:
-    st.error(f"🎯 **Directional portfolio** — net {net_exposure:+d}% exposure")
+    st.error(f" **Directional portfolio** — net {net_exposure:+d}% exposure")
 
 st.divider()
 
