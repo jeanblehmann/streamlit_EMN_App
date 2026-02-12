@@ -18,21 +18,20 @@ st.title("🚀 Equity Market Neutral (EMN) AI Portfolio Builder")
 # ============================================================
 @st.cache_data(ttl=3600)
 def get_market_data(tickers: list[str]) -> pd.DataFrame:
-    """Fetch stock metadata. Falls back to synthetic data if API fails."""
+    """Fetch stock metadata (beta, momentum, simulated AI signals)."""
     data_list = []
     for t in tickers:
         try:
             stock = yf.Ticker(t)
             info = stock.info
-            beta = info.get("beta", 1.0)
-            if beta is None:
-                beta = 1.0
+            beta = info.get("beta") or 1.0
             beta = float(beta)
             sector = info.get("sector", "Unknown")
 
             hist = stock.history(period="6mo")
-            if hist.empty:
-                raise ValueError("No hist data")
+            if hist.empty or len(hist) < 2:
+                logger.warning("Insufficient history for %s — skipping", t)
+                continue
             momentum = ((hist["Close"].iloc[-1] / hist["Close"].iloc[0]) - 1) * 100
 
             np.random.seed(sum(ord(c) for c in t))
@@ -47,50 +46,25 @@ def get_market_data(tickers: list[str]) -> pd.DataFrame:
                     "Cluster": f"Group {np.random.choice([1, 2, 3, 4])}",
                 }
             )
-        except Exception as e:
-            # FALLBACK: synthetic data so the demo always works
-            logger.warning("API failed for %s (%s) — using synthetic data", t, e)
-            np.random.seed(len(t))
-            data_list.append(
-                {
-                    "Ticker": t,
-                    "Sector": np.random.choice(
-                        ["Technology", "Energy", "Financials", "Consumer", "Healthcare"]
-                    ),
-                    "Beta": round(np.random.uniform(0.5, 1.8), 2),
-                    "Momentum": round(np.random.uniform(-20, 20), 2),
-                    "AI_Sentiment": round(np.random.uniform(-1, 1), 2),
-                    "XGB_Conviction": round(np.random.uniform(0.5, 0.9), 2),
-                    "Cluster": f"Group {np.random.randint(1, 5)}",
-                }
-            )
+        except Exception as exc:
+            logger.warning("Failed to fetch data for %s: %s", t, exc)
+            continue
     return pd.DataFrame(data_list)
 
 
 @st.cache_data(ttl=3600)
 def get_price_history(tickers: list[str], period: str = "6mo") -> pd.DataFrame:
-    """Fetch daily close prices. Falls back to synthetic random walk if API fails."""
+    """Fetch daily close prices for a list of tickers."""
     if not tickers:
         return pd.DataFrame()
     try:
         data = yf.download(tickers, period=period, progress=False)["Close"]
         if isinstance(data, pd.Series):
             data = data.to_frame(name=tickers[0])
-        if data.empty:
-            raise ValueError("Empty price data")
         return data.dropna()
     except Exception as exc:
-        # FALLBACK: generate synthetic price history so charts still work
-        logger.warning("Price download failed (%s) — generating synthetic data", exc)
-        np.random.seed(42)
-        dates = pd.bdate_range(end=pd.Timestamp.today(), periods=126)
-        prices = {}
-        for t in tickers:
-            np.random.seed(sum(ord(c) for c in t))
-            base = np.random.uniform(50, 500)
-            returns = np.random.normal(0.0005, 0.02, len(dates))
-            prices[t] = base * np.cumprod(1 + returns)
-        return pd.DataFrame(prices, index=dates)
+        logger.warning("Price download failed: %s", exc)
+        return pd.DataFrame()
 
 
 UNIVERSE = [
@@ -107,16 +81,6 @@ st.subheader("📊 Stock Universe & AI Insights")
 if df_stocks.empty:
     st.warning("No stock data could be loaded. Check your network / tickers.")
     st.stop()
-
-# Indicate data source to the audience
-_has_live = any(df_stocks["Sector"] != "Unknown") and not all(
-    df_stocks["Sector"].isin(["Technology", "Energy", "Financials", "Consumer", "Healthcare"])
-    & (df_stocks["Sector"].value_counts().max() <= 2)
-)
-if _has_live:
-    st.caption("🟢 Live data from Yahoo Finance")
-else:
-    st.caption("🟡 Using synthetic demo data (Yahoo Finance unavailable)")
 
 styled_df = (
     df_stocks.style.background_gradient(subset=["AI_Sentiment"], cmap="RdYlGn")
@@ -308,15 +272,10 @@ c1.metric("Long Side Beta", round(l_beta, 3))
 c2.metric("Short Side Beta", round(s_beta, 3))
 c3.metric("NET PORTFOLIO BETA", round(net_beta, 3))
 
-abs_beta = abs(net_beta)
-if abs_beta <= 0.05:
-    st.success(f"🟢 **Beta Neutral** (|β| = {abs_beta:.3f} ≤ 0.05) — fully hedged against market moves")
-elif abs_beta <= 0.10:
-    st.warning(f"🟡 **Near Neutral** (|β| = {abs_beta:.3f} ≤ 0.10) — minor directional exposure, acceptable for most EMN strategies")
-elif abs_beta <= 0.20:
-    st.warning(f"🟠 **Loosely Neutral** (|β| = {abs_beta:.3f} ≤ 0.20) — moderate market sensitivity, typical of low-beta long/short funds")
+if -0.05 <= net_beta <= 0.05:
+    st.success("✅ **Beta Neutral** — portfolio hedged against market moves")
 else:
-    st.error(f"🔴 **Market Exposed** (|β| = {abs_beta:.3f} > 0.20) — significant directional risk, not market neutral")
+    st.error("⚠️ **Not Beta Neutral** — portfolio exposed to market direction")
 
 
 # ============================================================
