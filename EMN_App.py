@@ -96,7 +96,7 @@ st.dataframe(styled_df, use_container_width=True, hide_index=True)
 with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
     col_a, col_b = st.columns(2)
     with col_a:
-        st.markdown("### 📈 Factor Definitions")
+        st.markdown("### Factor Definitions")
         st.write(
             "**Momentum (6-Mo):** Price trend over the last 180 days. "
             "High momentum identifies 'winners' likely to continue outperforming."
@@ -106,7 +106,7 @@ with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
             "Scores range from -1 (Bearish) to +1 (Bullish)."
         )
     with col_b:
-        st.markdown("### 🤖 AI Model Logic")
+        st.markdown("### AI Model Logic")
         st.write(
             "**XGB Conviction:** Supervised learning probability (0-100%) "
             "that the stock will beat its peers."
@@ -116,7 +116,7 @@ with st.expander("📚 Guide: How to interpret AI Signals & Factors"):
             "behavior; diversify by picking from different groups."
         )
     st.divider()
-    st.markdown("### 💰 Exposure & Neutrality")
+    st.markdown("### Exposure & Neutrality")
     col_c, col_d = st.columns(2)
     with col_c:
         st.write(
@@ -163,7 +163,7 @@ with col_sel2:
 # ============================================================
 # 4. EXPOSURE CONTROLS
 # ============================================================
-st.subheader("💰 Exposure Configuration")
+st.subheader("Exposure Configuration")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
