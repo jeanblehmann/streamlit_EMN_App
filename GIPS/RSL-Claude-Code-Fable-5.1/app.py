@@ -281,7 +281,7 @@ with tab_lab:
         st.caption(f"Record available: {path_start.isoformat()} to {path_end.isoformat()}. "
                    f"A flow dated on the window start is inside the opening value.")
 
-    flows = E.flows_from_df(edited, int(st.session_state["shift_months"]), int(st.session_state["shift_days"]))
+    flows = E.flows_from_df(edited, int(st.session_state.get("shift_months", 0)), int(st.session_state.get("shift_days", 0)))
     values = E.portfolio_values(index_used, float(st.session_state["v0"]), flows)
     ws, we = st.session_state["window_start"], st.session_state["window_end"]
     if we <= ws:
