@@ -224,7 +224,7 @@ with st.sidebar:
 
 spec = E.PathSpec(preset=st.session_state["preset"],
                   start=date(2025, 5, 31) if st.session_state["preset"] == "card_base" else date(2020, 12, 31),
-                  event_shift=int(st.session_state["event_shift"]),
+                  event_shift=int(st.session_state.get("event_shift", 0)),
                   seg1=st.session_state["seg1"] / 100.0, seg2=st.session_state["seg2"] / 100.0)
 index_gross = E.build_path(spec)
 fee = float(st.session_state["fee"]) / 100.0
