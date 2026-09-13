@@ -433,6 +433,86 @@ with tab_lab:
                        "The bars sum exactly to the gap; the order is the date order, so an early flow's bar also carries some of "
                        "the interaction with later flows.")
 
+    with st.expander("Formulas: Exact TWR · Modified Dietz · IRR/MWR with this window's numbers"):
+        has_flows = len(res.flows) > 0
+
+        # ── Exact TWR ──────────────────────────────────────────────────────────
+        st.markdown('<div class="rsl-lbl">Exact time-weighted return</div>', unsafe_allow_html=True)
+        st.latex(r"\mathrm{TWR} = \prod_{i=1}^{n}(1 + r_i) - 1")
+
+        sp_vals = res.subperiods["Exact sub-period"].values   # decimal
+        n_sp = len(sp_vals)
+
+        def _factor(r):
+            sign = "+" if r >= 0 else "-"
+            return rf"(1 {sign} {abs(r) * 100:.4f}\%)"
+
+        if n_sp <= 6:
+            factors = r" \times ".join(_factor(r) for r in sp_vals)
+        else:
+            head = r" \times ".join(_factor(r) for r in sp_vals[:3])
+            tail = r" \times ".join(_factor(r) for r in sp_vals[-2:])
+            factors = head + r" \times \cdots \times " + tail
+        twr_sign = "+" if res.twr_exact >= 0 else "-"
+        st.latex(factors + rf" - 1 = {twr_sign}{abs(res.twr_exact) * 100:.4f}\%")
+
+        # ── Modified Dietz ─────────────────────────────────────────────────────
+        st.markdown('<div class="rsl-lbl">Modified Dietz (per sub-period, then linked)</div>', unsafe_allow_html=True)
+        st.latex(
+            r"r_{\mathrm{MD}} = "
+            r"\frac{V_{\mathrm{end}} - V_{\mathrm{start}} - \sum CF_i}"
+            r"{V_{\mathrm{start}} + \sum w_i \cdot CF_i}"
+        )
+        sp0 = res.subperiods.iloc[0]
+        v_s0 = sp0["Opening"]
+        v_e0 = sp0["Closing"]
+        cf0  = sp0["Flows"]
+        wf0  = sp0["Weighted flows"]
+        num0 = v_e0 - v_s0 - cf0
+        den0 = v_s0 + wf0
+        r_md0 = sp0["Sub-period return"]   # decimal
+        linked_note = (
+            rf"\quad(\text{{sub-period 1 of {n_sp}; linked total: }}{res.twr_reported * 100:+.4f}\%)"
+            if n_sp > 1 else ""
+        )
+        if cf0 == 0 and wf0 == 0:
+            md_lhs = rf"\frac{{{v_e0:.3f} - {v_s0:.3f}}}{{{v_s0:.3f}}}"
+        else:
+            cf_part = f"- {cf0:.3f}" if cf0 >= 0 else f"+ {abs(cf0):.3f}"
+            wf_part = f"+ {wf0:.3f}" if wf0 >= 0 else f"- {abs(wf0):.3f}"
+            md_lhs = (
+                rf"\frac{{{v_e0:.3f} - {v_s0:.3f} {cf_part}}}"
+                rf"{{{v_s0:.3f} {wf_part}}}"
+            )
+        md_sign = "+" if r_md0 >= 0 else "-"
+        st.latex(md_lhs + rf" = \frac{{{num0:.3f}}}{{{den0:.3f}}} = {md_sign}{abs(r_md0) * 100:.4f}\%{linked_note}")
+
+        # ── IRR / MWR ──────────────────────────────────────────────────────────
+        st.markdown('<div class="rsl-lbl">IRR / money-weighted return</div>', unsafe_allow_html=True)
+        if has_flows:
+            st.latex(
+                r"V_{\mathrm{start}}(1+r)"
+                r" + \sum_{i} CF_i\,(1+r)^{1-\tau_i}"
+                r" = V_{\mathrm{end}}"
+            )
+        else:
+            st.latex(r"V_{\mathrm{start}}(1+r) = V_{\mathrm{end}}")
+        if np.isfinite(res.mwr):
+            lhs = rf"{res.v_start:.3f}(1+r)"
+            flow_rows = list(res.flows.iterrows())
+            shown = flow_rows[:4]
+            for _, row in shown:
+                tau = row["Elapsed"]
+                amt = row["Amount"]
+                cf_sign = "+" if amt >= 0 else "-"
+                lhs += rf" {cf_sign} {abs(amt):.3f}(1+r)^{{1 - {tau:.4f}}}"
+            if len(flow_rows) > 4:
+                lhs += r" + \cdots"
+            mwr_sign = "+" if res.mwr >= 0 else "-"
+            st.latex(lhs + rf" = {res.v_end:.3f} \quad\Rightarrow\quad r = {mwr_sign}{abs(res.mwr) * 100:.4f}\%")
+        else:
+            st.caption("MWR not available for this configuration.")
+
     st.download_button("Download this configuration's series (CSV)",
                        data=pd.DataFrame({"date": x, "index": index_used.loc[ws:we].values, "twr_cumulative": res.twr_path.values,
                                           "mwr_implied": res.mwr_path.values, "portfolio_value": res.values.values}).to_csv(index=False),
