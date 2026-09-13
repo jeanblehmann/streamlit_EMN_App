@@ -1,0 +1,253 @@
+# Provision text extracted from the 2020 GIPS Standards for Firms workbook (485 provisions).
+# Working reference only: check against the official document, Guidance Statements and Q&A.
+- id: 1.A.5
+  type: Requirement
+  section: 1.A Fundamentals of Compliance—Requirements
+  text: 'The firm must: a. Document its policies and procedures used in establishing and maintaining compliance
+    with the requirements of the GIPS standards, as well as any recommendations it has chosen to adopt, and apply
+    them consistently. b. Create policies and procedures to monitor and identify changes and additions to all of
+    the Guidance Statements, interpretations, and Q&As published by CFA Institute and the GIPS standards governing
+    bodies.'
+- id: 1.A.35
+  type: Requirement
+  section: 1.A Fundamentals of Compliance—Requirements
+  text: 'The firm must present time-weighted returns unless certain criteria are met, in which case the firm may
+    present money-weighted returns. The firm may present money-weighted returns only if the firm has control over
+    the external cash flows into the portfolios in the composite or pooled fund and the portfolios in the composite
+    have or the pooled fund has at least one of the following characteristics: a. Closed-end b. Fixed life c. Fixed
+    commitment d. Illiquid investments as a significant part of the investment strategy.'
+- id: 1.A.36
+  type: Requirement
+  section: 1.A Fundamentals of Compliance—Requirements
+  text: The firm must choose if it will present time-weighted returns, money-weighted returns, or both for each
+    composite or pooled fund, and it must consistently present the selected returns for each composite or pooled
+    fund.
+- id: 2.A.12
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: Returns for periods of less than one year must not be annualized.
+- id: 2.A.16
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: The firm must calculate performance in accordance with its composite-specific or pooled fund–specific calculation
+    policies.
+- id: 2.A.23
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: 'When calculating time-weighted returns for portfolios that are included in composites, all portfolios except
+    private market investment portfolios (see 2.A.40) must be valued: a. At least monthly. b. As of the calendar
+    month end or the last business day of the month. c. On the date of all large cash flows. The firm must define
+    large cash flow for each composite to determine when portfolios in that composite must be valued.'
+- id: 2.A.24
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: 'When calculating time-weighted returns for all portfolios except private market investment portfolios (see
+    2.A.41) included in composites, the firm must: a. Calculate returns at least monthly. b. Calculate monthly returns
+    through the calendar month end or the last business day of the month. c. Calculate sub-period returns at the
+    time of all large cash flows, if daily returns are not calculated. d. For external cash flows that are not large
+    cash flows, calculate portfolio returns that adjust for daily-weighted external cash flows, if daily returns
+    are not calculated. e. Treat external cash flows according to the firm’s composite-specific policy. f. Geometrically
+    link periodic and sub-period returns. g. Consistently apply the calculation methodology used for an individual
+    portfolio.'
+- id: 2.A.29
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: 'When calculating money-weighted returns, the firm must: a. Calculate annualized since-inception money-weighted
+    returns. b. Calculate money-weighted returns using daily external cash flows. c. Include stock distributions
+    as external cash flows and value stock distributions at the time of distribution. d. When calculating pooled
+    fund net returns, calculate pooled fund net returns that are net of total pooled fund fees.'
+- id: 2.A.30
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: 'When calculating composite net-of-fees returns, investment management fees used in the calculation must
+    be either: a. Actual investment management fees incurred by each portfolio in the composite, or b. A model investment
+    management fee appropriate to prospective clients.'
+- id: 2.A.31
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: If the firm uses model investment management fees to calculate composite net-of-fees returns, the returns
+    calculated must be equal to or lower than those that would have been calculated using actual investment management
+    fees.
+- id: 2.A.35
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: Composite time-weighted returns except private market investment composites (see 2.A.42) must be calculated
+    at least monthly.
+- id: 2.A.36
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: 'Composite time-weighted returns must be calculated by using one of the following approaches: a. Asset-weighting
+    the individual portfolio returns using beginning-of-period values; b. Asset-weighting the individual portfolio
+    returns using a method that reflects both beginning-of-period values and external cash flows; or c. Using the
+    aggregate method.'
+- id: 2.A.39
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: When calculating composite money-weighted returns, the firm must calculate composite returns by aggregating
+    the portfolio-level information for those portfolios included in the composite.
+- id: 2.A.40
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: 'When calculating time-weighted returns for private market investment portfolios that are included in composites,
+    private market investment portfolios must be valued: a. At least quarterly. b. As of each quarter end or the
+    last business day of the quarter.'
+- id: 2.A.41
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: 'When calculating time-weighted returns for private market investment portfolios that are included in composites,
+    the firm must: a. Calculate returns at least quarterly. b. Calculate quarterly returns through the calendar
+    quarter end or the last business day of the quarter. c. Calculate portfolio returns that adjust for daily-weighted
+    external cash flows. d. Treat external cash flows according to the firm’s composite-specific policy. e. Geometrically
+    link periodic and sub-period returns. f. Consistently apply the calculation methodology used for an individual
+    portfolio.'
+- id: 2.A.42
+  type: Requirement
+  section: 2.A Input Data and Calculation Methodology—Requirements
+  text: Composite time-weighted returns for private market investment composites must be calculated at least quarterly.
+- id: 2.B.1
+  type: Recommendation
+  section: 2.B Input Data and Calculation Methodology—Recommendations
+  text: The firm should value portfolios on the date of all external cash flows.
+- id: 3.A.12
+  type: Requirement
+  section: 3.A Composite and Pooled Fund Maintenance—Requirements
+  text: A firm that removes portfolios from composites because of significant cash flows must define “significant”
+    on an ex ante, composite-specific basis and must consistently follow the composite-specific policy.
+- id: 4.A.1
+  type: Requirement
+  section: 4.A Presentation and Reporting—Requirements
+  text: 'The firm must present in each gips composite report: a. At least five years of performance (or for the
+    period since the composite inception date if the composite has been in existence less than five years) that
+    meets the requirements of the GIPS standards. After the firm presents a minimum of five years of GIPS-compliant
+    performance (or for the period since the composite inception date if the composite has been in existence less
+    than five years), the firm must present an additional year of performance each year, building up to a minimum
+    of 10 years of GIPS-compliant performance. b. Composite returns for each annual period. c. When the initial
+    period is less than a full year, the return from the composite inception date through the initial annual period
+    end. d. When the composite terminates, the return from the last annual period end through the composite termination
+    date. e. The total return for the benchmark for each annual period and for all other periods for which composite
+    returns are presented, unless the firm determines there is no appropriate benchmark. f. The number of portfolios
+    in the composite as of each annual period end. If the composite contains five or fewer portfolios at period
+    end, the number of portfolios is not required. g. Composite assets as of each annual period end. h. Total firm
+    assets as of each annual period end. i. A measure of internal dispersion of individual portfolio annual returns
+    for each annual period. If the composite contains five or fewer portfolios for the full year, a measure of internal
+    dispersion is not required. j. For composites for which monthly composite returns are available, the three-year
+    annualized ex post standard deviation (using monthly returns) of the composite and the benchmark as of each
+    annual period end.'
+- id: 4.A.3
+  type: Requirement
+  section: 4.A Presentation and Reporting—Requirements
+  text: 'The firm must clearly label or identify: a. The periods that are presented. b. If composite returns are
+    gross-of-fees or net-of-fees.'
+- id: 4.B.2
+  type: Recommendation
+  section: 4.B Presentation and Reporting—Recommendations
+  text: 'The firm should present the following items: a. Cumulative returns of the composite and the benchmark for
+    all periods. b. Equal-weighted composite returns. c. Quarterly and/or monthly returns. d. Annualized composite
+    and benchmark returns for periods longer than 12 months.'
+- id: 4.C.6
+  type: Requirement
+  section: 4.C Disclosure—Requirements
+  text: When presenting gross-of-fees returns, the firm must disclose if any other fees are deducted in addition
+    to transaction costs.
+- id: 4.C.7
+  type: Requirement
+  section: 4.C Disclosure—Requirements
+  text: 'When presenting net-of-fees returns, the firm must disclose: a. If any other fees are deducted in addition
+    to investment management fees and transaction costs. b. If net-of-fees returns are net of any performance-based
+    fees or carried interest. c. If model or actual investment management fees are used. d. If model investment
+    management fees are used, and composite gross-offees returns are not presented, the model investment management
+    fee used to calculate net-of-fees returns. e. If model investment management fees are used, the methodology
+    used to calculate net-of-fees returns.'
+- id: 4.C.9
+  type: Requirement
+  section: 4.C Disclosure—Requirements
+  text: The firm must disclose or otherwise indicate the reporting currency.
+- id: 4.C.11
+  type: Requirement
+  section: 4.C Disclosure—Requirements
+  text: The firm must disclose the current fee schedule appropriate to prospective clients or prospective investors.
+    a. When presenting performance to a prospective client for a standalone portfolio, the fee schedule must reflect
+    the fee schedule for a standalone portfolio managed according to that strategy. b. When presenting performance
+    of a composite that includes carve-outs to a prospective client for a multi-asset strategy portfolio, the fee
+    schedule must reflect the fee schedule for a multi-asset strategy portfolio managed according to that strategy.
+    c. When presenting a wrap fee composite to a wrap fee prospective client, the fee schedule must reflect the
+    total wrap fee. d. When presenting a gips composite report to a prospective investor for a pooled fund included
+    in the composite, the firm must disclose the pooled fund’s current fee schedule and expense ratio.
+- id: 4.C.16
+  type: Requirement
+  section: 4.C Disclosure—Requirements
+  text: The firm must disclose that policies for valuing investments, calculating performance, and preparing gips
+    reports are available upon request.
+- id: 4.C.19
+  type: Requirement
+  section: 4.C Disclosure—Requirements
+  text: The firm must disclose all significant events that would help a prospective client interpret the gips composite
+    report. This disclosure must be included for a minimum of one year and for as long as it is relevant to interpreting
+    the track record.
+- id: 4.C.35
+  type: Requirement
+  section: 4.C Disclosure—Requirements
+  text: If the firm has adopted a significant cash flow policy for the composite, the firm must disclose how the
+    firm defines a significant cash flow for the composite and for which periods.
+- id: 4.C.42
+  type: Requirement
+  section: 4.C Disclosure—Requirements
+  text: If the firm changes the type of return(s) presented for the composite (e.g., changes from money-weighted
+    returns to time-weighted returns), the firm must disclose the change and the date of the change. This disclosure
+    must be included for a minimum of one year and for as long as it is relevant to interpreting the track record.
+- id: 5.A.1
+  type: Requirement
+  section: 5.A Presentation and Reporting—Requirements
+  text: 'The firm must present in each gips composite report: a. The annualized composite since-inception money-weighted
+    return through the most recent annual period end. b. When the composite has a track record that is less than
+    a full year, the non-annualized composite since-inception money-weighted return through the initial annual period
+    end. c. When the composite terminates, the annualized composite since-inception money-weighted return through
+    the composite termination date. d. The since-inception money-weighted return for the benchmark for the same
+    periods as presented for the composite, unless the firm determines there is no appropriate benchmark. e. The
+    number of portfolios in the composite as of the most recent annual period end. If the composite contains five
+    or fewer portfolios at period end, the number of portfolios is not required. f. Composite assets as of the most
+    recent annual period end. g. Total firm assets as of the most recent annual period end.'
+- id: 5.A.4
+  type: Requirement
+  section: 5.A Presentation and Reporting—Requirements
+  text: 'If portfolios in the composite have committed capital, the firm must present the following items as of
+    the most recent annual period end: a. Composite since-inception paid-in capital. b. Composite since-inception
+    distributions. c. Composite cumulative committed capital. d. Total value to since-inception paid-in capital
+    (investment multiple or tvpi). e. Since-inception distributions to since-inception paid-in capital (realization
+    multiple or dpi). f. Since-inception paid-in capital to cumulative committed capital (pic multiple). g. Residual
+    value to since-inception paid-in capital (unrealized multiple or rvpi).'
+- id: 5.C.35
+  type: Requirement
+  section: 5.C Disclosure—Requirements
+  text: The firm must disclose the frequency of external cash flows used in the money-weighted return calculation
+    if daily frequency was not used.
+- id: 8.A.4
+  type: Requirement
+  section: 8.A Fundamental Requirements of the GIPS Advertising Guidelines
+  text: Returns for periods of less than one year included in a gips advertisement must not be annualized.
+- id: 8.A.13
+  type: Requirement
+  section: 8.A Fundamental Requirements of the GIPS Advertising Guidelines
+  text: Other information beyond what is required or recommended under the GIPS Advertising Guidelines (e.g., composite
+    or pooled fund returns for additional periods) must be presented with equal or lesser prominence relative to
+    the information required or recommended by the GIPS Advertising Guidelines. This information must not conflict
+    with the requirements or recommendations of the GIPS standards or the GIPS Advertising Guidelines.
+- id: 8.C.1
+  type: Requirement
+  section: 8.C GIPS Advertisements for a Composite That Include Performance—Requirements
+  text: 'If time-weighted returns are presented in the corresponding gips composite report, the firm must present
+    composite total returns according to one of the following: a. One-, three-, and five-year annualized composite
+    returns through the most recent period. If the composite has been in existence for less than five years, the
+    firm must also present the annualized return since the composite inception date. b. The period-to-date composite
+    return in addition to one-, three-, and five-year annualized composite returns through the same period as presented
+    in the corresponding gips composite report. If the composite has been in existence for less than five years,
+    the firm must also present the annualized return since the composite inception date. c. The period-to-date composite
+    return in addition to five years of annual composite returns (or for each annual period since the composite
+    inception date if the composite has been in existence for less than five years). The annual returns must be
+    calculated through the same period as presented in the corresponding gips composite report. d. The annualized
+    composite return for the total period that includes all periods presented in the corresponding gips composite
+    report, through either: i. The most recent period end, or ii. The most recent annual period end.'
+- id: 8.C.3
+  type: Requirement
+  section: 8.C GIPS Advertisements for a Composite That Include Performance—Requirements
+  text: The firm must clearly label composite returns as gross-of-fees or net-of-fees.
