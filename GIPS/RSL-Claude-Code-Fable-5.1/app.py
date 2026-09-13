@@ -298,7 +298,7 @@ with tab_lab:
                                             method=st.session_state["method"], threshold=thr,
                                             revalue_large=bool(st.session_state["revalue_large"]))
 
-    cfg = {k: st.session_state[k] for k in WIDGET_DEFAULTS}
+    cfg = {k: st.session_state.get(k, v) for k, v in WIDGET_DEFAULTS.items()}
     cfg["fee"] = fee
     cfg["preset"] = st.session_state["preset"]
 
